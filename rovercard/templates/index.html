@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rover Card</title>
+    <style>
+      body {
+        font-family: "Arial", sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+      }
+      .container {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      }
+      h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 30px;
+        font-size: 2.5em;
+      }
+      .upload-area {
+        border: 3px dashed #667eea;
+        border-radius: 10px;
+        padding: 40px;
+        text-align: center;
+        margin-bottom: 20px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+      }
+      .upload-area:hover {
+        border-color: #764ba2;
+        background-color: #f8f9ff;
+      }
+      .upload-area.dragover {
+        border-color: #764ba2;
+        background-color: #f0f2ff;
+      }
+      input[type="file"] {
+        display: none;
+      }
+      .upload-btn {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+        padding: 12px 30px;
+        border: none;
+        border-radius: 25px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: transform 0.2s;
+      }
+      .upload-btn:hover {
+        transform: translateY(-2px);
+      }
+      .preview-area {
+        display: flex;
+        justify-content: space-around;
+        margin-top: 30px;
+        gap: 20px;
+      }
+      .preview-box {
+        text-align: center;
+        flex: 1;
+      }
+      .preview-box h3 {
+        color: #333;
+        margin-bottom: 15px;
+      }
+      .preview-box img {
+        max-width: 100%;
+        max-height: 300px;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      }
+      .loading {
+        display: none;
+        text-align: center;
+        margin: 20px 0;
+      }
+      .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      .status-message {
+        text-align: center;
+        margin: 20px 0;
+        padding: 10px;
+        border-radius: 5px;
+        display: none;
+      }
+      .status-message.success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .status-message.error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎴 Rover Card</h1>
+
+      <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+        <p>📁 点击选择图片或拖拽图片到此处</p>
+        <p style="color: #666; font-size: 14px">支持 PNG, JPG, JPEG, WEBP 格式，选择后将自动处理</p>
+        <input type="file" id="fileInput" accept="image/*" />
+        <button class="upload-btn">选择图片</button>
+      </div>
+
+      <div class="status-message" id="statusMessage"></div>
+
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>正在处理图片...</p>
+      </div>
+
+      <div class="preview-area" id="previewArea" style="display: none">
+        <div class="preview-box">
+          <h3>📷 原始图片</h3>
+          <img id="originalImage" alt="原始图片" />
+        </div>
+        <div class="preview-box">
+          <h3>✨ 处理后图片</h3>
+          <img id="processedImage" alt="处理后图片" />
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let selectedFile = null;
+
+      // 显示状态消息
+      function showMessage(message, type = "success") {
+        const statusMessage = document.getElementById("statusMessage");
+        statusMessage.textContent = message;
+        statusMessage.className = `status-message ${type}`;
+        statusMessage.style.display = "block";
+
+        // 3秒后自动隐藏
+        setTimeout(() => {
+          statusMessage.style.display = "none";
+        }, 3000);
+      }
+
+      // 文件选择处理
+      document.getElementById("fileInput").addEventListener("change", function (e) {
+        const file = e.target.files[0];
+        if (file) {
+          handleFileSelect(file);
+        }
+      });
+
+      // 拖拽处理
+      const uploadArea = document.querySelector(".upload-area");
+
+      uploadArea.addEventListener("dragover", function (e) {
+        e.preventDefault();
+        uploadArea.classList.add("dragover");
+      });
+
+      uploadArea.addEventListener("dragleave", function (e) {
+        e.preventDefault();
+        uploadArea.classList.remove("dragover");
+      });
+
+      uploadArea.addEventListener("drop", function (e) {
+        e.preventDefault();
+        uploadArea.classList.remove("dragover");
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith("image/")) {
+          handleFileSelect(file);
+        }
+      });
+
+      function handleFileSelect(file) {
+        selectedFile = file;
+
+        // 显示原始图片预览
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          document.getElementById("originalImage").src = e.target.result;
+          document.getElementById("previewArea").style.display = "flex";
+
+          // 自动开始处理图片
+          processImage();
+        };
+        reader.readAsDataURL(file);
+      }
+
+      async function processImage() {
+        if (!selectedFile) return;
+
+        const loading = document.getElementById("loading");
+
+        loading.style.display = "block";
+        showMessage("开始处理图片...", "success");
+
+        try {
+          const formData = new FormData();
+          formData.append("image", selectedFile);
+
+          const response = await fetch("/rover-card/", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (response.ok) {
+            const blob = await response.blob();
+            const imageUrl = URL.createObjectURL(blob);
+            document.getElementById("processedImage").src = imageUrl;
+            showMessage("图片处理完成！", "success");
+          } else {
+            const errorText = await response.text();
+            showMessage(`图片处理失败: ${errorText}`, "error");
+          }
+        } catch (error) {
+          console.error("Error:", error);
+          showMessage("处理过程中出现错误", "error");
+        } finally {
+          loading.style.display = "none";
+        }
+      }
+    </script>
+  </body>
+</html>
