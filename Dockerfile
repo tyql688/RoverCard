@@ -35,4 +35,4 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
 # Run the application
-CMD ["uvicorn", "rovercard.main:app", "--host", "0.0.0.0", "--port", "8108"]
+CMD ["uvicorn", "rovercard.core:app", "--host", "0.0.0.0", "--port", "8108"]
